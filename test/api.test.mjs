@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHandler } from "../netlify/functions/api.mts";
 
+const testUserResolver = async (_request, context) => context.user ?? null;
+
 function createMemoryStore() {
   const records = new Map();
   return {
@@ -57,7 +59,7 @@ const validProject = {
 };
 
 test("health endpoint remains public", async () => {
-  const handler = createHandler(() => createMemoryStore());
+  const handler = createHandler(() => createMemoryStore(), testUserResolver);
   const response = await handler(makeRequest("/api/health"), {});
   assert.equal(response.status, 200);
   assert.equal((await response.json()).ok, true);
@@ -65,7 +67,7 @@ test("health endpoint remains public", async () => {
 
 test("project CRUD persists and retrieves records for the signed-in user", async () => {
   const store = createMemoryStore();
-  const handler = createHandler(() => store);
+  const handler = createHandler(() => store, testUserResolver);
   const context = { user: { id: "user-a", email: "a@example.test" } };
 
   const createdResponse = await handler(makeRequest("/api/projects", "POST", validProject), context);
@@ -184,7 +186,7 @@ test("storage errors return a safe service error instead of crashing the functio
     get: async () => null,
     setJSON: async () => undefined,
     delete: async () => undefined,
-  }));
+  }), testUserResolver);
   const response = await handler(makeRequest("/api/projects"), { user: { id: "user-a" } });
   assert.equal(response.status, 503);
   assert.match((await response.json()).error, /temporarily unavailable/i);
