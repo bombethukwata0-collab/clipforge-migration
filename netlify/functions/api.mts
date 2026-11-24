@@ -127,13 +127,19 @@ export function createHandler(storeFactory: StoreFactory = defaultStoreFactory) 
       }
 
       if (path === "/api/projects" && request.method === "GET") {
+        // Netlify Blobs automatically retrieves all pages unless paginate:true.
+        // Sort before applying the original API's 50-project limit; blob keys are
+        // random IDs and therefore do not represent project recency.
         const { blobs } = await store.list({ prefix });
-        const projects: Project[] = [];
-        for (const blob of blobs.slice(0, 50)) {
-          const item = await store.get(blob.key, { type: "json" }) as Project | null;
-          if (item && item.ownerId === user.id) projects.push(item);
-        }
-        projects.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        const records = await Promise.all(
+          blobs.map(async (blob) =>
+            await store.get(blob.key, { type: "json" }) as Project | null
+          )
+        );
+        const projects = records
+          .filter((item): item is Project => !!item && item.ownerId === user.id)
+          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+          .slice(0, 50);
         return json({ projects });
       }
 
