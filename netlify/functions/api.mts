@@ -37,7 +37,7 @@ export default async (request: Request, context: Context) => {
   if (!user?.id) return error("Sign in through the protected Netlify site to continue.", 401);
 
   const url = new URL(request.url);
-  const path = url.pathname.replace(/\\/+$/, "") || "/";
+  const path = url.pathname.replace(/\/+$/, "") || "/";
   const store = getStore({ name: "clipforge-projects", consistency: "strong" });
   const prefix = `users/${encodeURIComponent(user.id)}/projects/`;
 
@@ -76,7 +76,7 @@ export default async (request: Request, context: Context) => {
     return json({ project }, 201);
   }
 
-  const match = path.match(/^\\/api\\/projects\\/([A-Za-z0-9-]+)$/);
+  const match = path.match(/^\/api\/projects\/([A-Za-z0-9-]+)$/);
   if (match) {
     const id = match[1];
     const key = prefix + id;
