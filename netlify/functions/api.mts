@@ -24,6 +24,42 @@ const json = (data: unknown, status = 200) =>
 
 const error = (message: string, status: number) => json({ error: message }, status);
 
+const MAX_PROJECT_BODY_BYTES = 512 * 1024;
+
+async function readJsonBody(request: Request): Promise<
+  | { ok: true; value: unknown }
+  | { ok: false; status: 400 | 413 }
+> {
+  const declaredLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_PROJECT_BODY_BYTES) {
+    return { ok: false, status: 413 };
+  }
+  if (!request.body) return { ok: false, status: 400 };
+
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let totalBytes = 0;
+  let text = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_PROJECT_BODY_BYTES) {
+        await reader.cancel();
+        return { ok: false, status: 413 };
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    text += decoder.decode();
+    return { ok: true, value: JSON.parse(text) as unknown };
+  } catch {
+    return { ok: false, status: 400 };
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 function validProjectSettings(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const s = value as Record<string, unknown>;
@@ -144,12 +180,14 @@ export function createHandler(storeFactory: StoreFactory = defaultStoreFactory) 
       }
 
       if (path === "/api/projects" && request.method === "POST") {
-        let body: unknown;
-        try {
-          body = await request.json();
-        } catch {
-          return error("Invalid JSON request.", 400);
+        const parsed = await readJsonBody(request);
+        if (!parsed.ok) {
+          return error(
+            parsed.status === 413 ? "Project data is too large." : "Invalid JSON request.",
+            parsed.status
+          );
         }
+        const body: unknown = parsed.value;
         if (!isProjectBody(body)) {
           return error("Project title and valid clip data are required.", 400);
         }
@@ -182,12 +220,14 @@ export function createHandler(storeFactory: StoreFactory = defaultStoreFactory) 
           }
 
           if (request.method === "PUT") {
-            let body: unknown;
-            try {
-              body = await request.json();
-            } catch {
-              return error("Invalid JSON request.", 400);
+            const parsed = await readJsonBody(request);
+            if (!parsed.ok) {
+              return error(
+                parsed.status === 413 ? "Project data is too large." : "Invalid JSON request.",
+                parsed.status
+              );
             }
+            const body: unknown = parsed.value;
             if (!body || typeof body !== "object" || Array.isArray(body)) {
               return error("A valid project object is required.", 400);
             }
