@@ -8,7 +8,7 @@ This repository is the destination workspace for migrating Clipforge from AppDep
 - [x] Netlify Vite build configuration added.
 - [x] Netlify Functions API foundation added for authenticated project CRUD.
 - [x] Project records are scoped to the authenticated Netlify user.
-- [ ] Replace the AppDeploy frontend client and authentication calls.
+- [x] Replace the AppDeploy frontend API client and authentication lookup with Netlify Functions + protected team SSO.
 - [ ] Complete AI analysis, smart reframe, and transcription using an approved provider.
 - [ ] Verify background processing and completion notifications.
 - [ ] Connect this repository to the existing Netlify project.
@@ -19,6 +19,7 @@ This repository is the destination workspace for migrating Clipforge from AppDep
 - The original AppDeploy project remains unchanged.
 - The AI endpoints currently return a clear "not enabled" response. No paid AI provider or API key has been configured.
 - The Netlify API uses the existing team-login protection and `context.user` for server-side identity. The app's current sign-out behavior still needs a supported replacement before release.
+- An automated GitHub Actions build workflow has been added, but no successful run has been confirmed yet.
 - The project has not yet been built, tested, or deployed from this repository.
 
 ## Destination
