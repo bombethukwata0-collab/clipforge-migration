@@ -3,7 +3,9 @@ import {
   handleAuthCallback,
   login,
   logout,
+  requestPasswordRecovery,
   signup,
+  updateUser,
 } from "@netlify/identity";
 
 type IdentityUser = {
@@ -69,5 +71,11 @@ export const auth = {
   },
   async signOut() {
     await logout();
+  },
+  async requestPasswordRecovery(email: string) {
+    await requestPasswordRecovery(email);
+  },
+  async updatePassword(password: string) {
+    await updateUser({ password });
   },
 };
