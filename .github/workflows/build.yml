@@ -20,3 +20,5 @@ jobs:
         run: npm install
       - name: Build frontend
         run: npm run build
+      - name: Type-check Netlify API function
+        run: npx tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --lib ES2022,DOM --skipLibCheck --strict netlify/functions/api.mts
