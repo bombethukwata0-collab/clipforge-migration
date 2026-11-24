@@ -82,7 +82,10 @@ test("project CRUD persists and retrieves records for the signed-in user", async
   assert.equal(updateResponse.status, 200);
   const updated = (await updateResponse.json()).project;
   assert.equal(updated.title, "Final highlights");
-  assert.equal(updated.clips[0].startSeconds, 2);\n  assert.equal(updated.captions[0].text, "What a pass!");\n  assert.deepEqual(updated.settings, validProject.settings);\n  assert.deepEqual(updated.captionStyle, validProject.captionStyle);
+  assert.equal(updated.clips[0].startSeconds, 2);
+  assert.equal(updated.captions[0].text, "What a pass!");
+  assert.deepEqual(updated.settings, validProject.settings);
+  assert.deepEqual(updated.captionStyle, validProject.captionStyle);
 
   const deleteResponse = await handler(makeRequest("/api/projects/" + created.id, "DELETE"), context);
   assert.equal(deleteResponse.status, 200);
