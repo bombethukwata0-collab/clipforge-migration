@@ -95,6 +95,40 @@ test("project CRUD persists and retrieves records for the signed-in user", async
   assert.deepEqual((await afterDelete.json()).projects, []);
 });
 
+test("project listing returns the 50 most recently updated projects", async () => {
+  const store = createMemoryStore();
+  const handler = createHandler(() => store);
+  for (let index = 0; index < 60; index += 1) {
+    const id = "project-" + String(index).padStart(3, "0");
+    store.records.set("users/user-a/projects/" + id, {
+      id,
+      ownerId: "user-a",
+      title: "Project " + index,
+      clips: validProject.clips,
+      captions: [],
+      captionStyle: validProject.captionStyle,
+      settings: validProject.settings,
+      createdAt: new Date(index * 1000).toISOString(),
+      updatedAt: new Date(index * 1000).toISOString(),
+    });
+  }
+  const response = await handler(makeRequest("/api/projects"), { user: { id: "user-a" } });
+  const projects = (await response.json()).projects;
+  assert.equal(projects.length, 50);
+  assert.equal(projects[0].id, "project-059");
+  assert.equal(projects[49].id, "project-010");
+});
+
+test("oversized project payloads are rejected before JSON parsing", async () => {
+  const handler = createHandler(() => createMemoryStore());
+  const response = await handler(new Request("https://clipforge.test/api/projects", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "x".repeat(512 * 1024 + 20),
+  }), { user: { id: "user-a" } });
+  assert.equal(response.status, 413);
+});
+
 test("a different user cannot list, update, or delete another user's project", async () => {
   const store = createMemoryStore();
   const handler = createHandler(() => store);
