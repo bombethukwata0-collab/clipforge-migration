@@ -22,14 +22,42 @@ const json = (data: unknown, status = 200) =>
 const error = (message: string, status: number) => json({ error: message }, status);
 
 function isProjectBody(value: unknown): value is {
-  title: string; clips: unknown[]; captions?: unknown[];
-  captionStyle?: unknown; settings?: unknown;
+  title: string; clips: Array<{ startSeconds: number; endSeconds: number }>;
+  captions?: Array<{ id: string; startSeconds: number; endSeconds: number; text: string }>;
+  captionStyle?: { fontSize: string; color: string; background: "dark" | "none" };
+  settings?: unknown;
 } {
   if (!value || typeof value !== "object") return false;
   const body = value as Record<string, unknown>;
-  return typeof body.title === "string" && body.title.trim().length > 0 &&
-    Array.isArray(body.clips) && body.clips.length >= 1 && body.clips.length <= 20 &&
-    (body.captions === undefined || (Array.isArray(body.captions) && body.captions.length <= 1000));
+  if (typeof body.title !== "string" || !body.title.trim() || body.title.length > 180) return false;
+  if (!Array.isArray(body.clips) || body.clips.length < 1 || body.clips.length > 20) return false;
+  if (!body.clips.every((clip) => {
+    if (!clip || typeof clip !== "object") return false;
+    const item = clip as Record<string, unknown>;
+    return typeof item.startSeconds === "number" && Number.isFinite(item.startSeconds) &&
+      typeof item.endSeconds === "number" && Number.isFinite(item.endSeconds) &&
+      item.startSeconds >= 0 && item.endSeconds > item.startSeconds;
+  })) return false;
+  if (body.captions !== undefined) {
+    if (!Array.isArray(body.captions) || body.captions.length > 1000) return false;
+    if (!body.captions.every((caption) => {
+      if (!caption || typeof caption !== "object") return false;
+      const item = caption as Record<string, unknown>;
+      return typeof item.id === "string" && item.id.length > 0 && item.id.length <= 120 &&
+        typeof item.startSeconds === "number" && Number.isFinite(item.startSeconds) && item.startSeconds >= 0 &&
+        typeof item.endSeconds === "number" && Number.isFinite(item.endSeconds) &&
+        item.endSeconds > item.startSeconds && item.endSeconds <= 7200 &&
+        typeof item.text === "string" && item.text.trim().length > 0 && item.text.length <= 220;
+    })) return false;
+  }
+  if (body.captionStyle !== undefined) {
+    if (!body.captionStyle || typeof body.captionStyle !== "object") return false;
+    const style = body.captionStyle as Record<string, unknown>;
+    if (!["26", "34", "42"].includes(String(style.fontSize)) ||
+      typeof style.color !== "string" || !/^#[0-9a-fA-F]{6}$/.test(style.color) ||
+      !["dark", "none"].includes(String(style.background))) return false;
+  }
+  return true;
 }
 
 export default async (request: Request, context: Context) => {
