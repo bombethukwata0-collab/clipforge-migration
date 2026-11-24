@@ -1,4 +1,4 @@
-import { api, auth } from '@appdeploy/client';
+import { api, auth } from './netlify-client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './link-import.css';
 import './captions.css';
@@ -18,7 +18,6 @@ import {
   Film,
   FolderOpen,
   LoaderCircle,
-  LogOut,
   Plus,
   Play,
   Save,
@@ -860,23 +859,6 @@ function App() {
         'Sign-in could not start. Check browser storage settings and try again.'
       );
     }
-  };
-
-  const signOut = async () => {
-    await auth.signOut();
-    setUser(null);
-    setProjects([]);
-    setFile(null);
-    setVideoUrl('');
-    setSourceLabel('');
-    setIsRemoteSource(false);
-    setDuration(0);
-    setClips([]);
-    setCaptions([]);
-    setSuggestions([]);
-    setActiveProjectId(null);
-    setBusy('');
-    setErrorMessage('');
   };
 
   const undoEdit = () => {
@@ -2942,16 +2924,15 @@ function App() {
               edit plans, not video files.
             </p>
           </div>
-          <button className="account-button" onClick={signOut}>
+          <div className="account-button" aria-label="Signed-in Netlify team account">
             <div className="avatar">
               {(user.name || user.email || 'C').slice(0, 1).toUpperCase()}
             </div>
             <span>
               <strong>{user.name || 'Creator account'}</strong>
-              <small>{user.email || 'Signed in'}</small>
+              <small>{user.email || 'Signed in with Netlify'}</small>
             </span>
-            <LogOut size={16} />
-          </button>
+          </div>
         </div>
       </aside>
 
