@@ -32,7 +32,28 @@ function makeRequest(path, method = "GET", body) {
 
 const validProject = {
   title: "Match highlights",
-  clips: [{ startSeconds: 2, endSeconds: 7 }],
+  clips: [{ startSeconds: 2, endSeconds: 7, reason: "Strong attacking sequence", score: 0.92 }],
+  captions: [{ id: "caption-1", startSeconds: 2.2, endSeconds: 3.8, text: "What a pass!" }],
+  captionStyle: { fontSize: "34", color: "#ffffff", background: "dark" },
+  settings: {
+    editInstructions: "Keep the strongest moments",
+    editScript: "Opening, action, reaction",
+    editingMode: "hybrid",
+    captionAnimation: "pop",
+    exportQuality: "high",
+    exportAspect: "9:16",
+    exportResolution: "1080",
+    crossfadeDuration: "0.8",
+    exportVolume: 110,
+    audioCleanup: 25,
+    clipLengthMode: "fixed",
+    customClipLength: "15",
+    reframeEnabled: true,
+    reframeX: 0.55,
+    reframeY: 0.45,
+    exportFormat: "mp4",
+    sourceAudioEnabled: true,
+  },
 };
 
 test("health endpoint remains public", async () => {
@@ -61,7 +82,7 @@ test("project CRUD persists and retrieves records for the signed-in user", async
   assert.equal(updateResponse.status, 200);
   const updated = (await updateResponse.json()).project;
   assert.equal(updated.title, "Final highlights");
-  assert.equal(updated.clips[0].startSeconds, 2);
+  assert.equal(updated.clips[0].startSeconds, 2);\n  assert.equal(updated.captions[0].text, "What a pass!");\n  assert.deepEqual(updated.settings, validProject.settings);\n  assert.deepEqual(updated.captionStyle, validProject.captionStyle);
 
   const deleteResponse = await handler(makeRequest("/api/projects/" + created.id, "DELETE"), context);
   assert.equal(deleteResponse.status, 200);
