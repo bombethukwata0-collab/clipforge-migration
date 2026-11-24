@@ -12,7 +12,9 @@
     "lucide-react": "^0.469.0",
     "@lofcz/deepfilternet-web": "^0.1.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "@netlify/blobs": "^10.0.0",
+    "@netlify/functions": "^4.2.0"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.0.0"
