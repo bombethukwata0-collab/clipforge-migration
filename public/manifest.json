@@ -1,0 +1,19 @@
+{
+  "name": "CLIPFORGE AI — Video Studio",
+  "short_name": "CLIPFORGE",
+  "description": "A local-first AI-assisted video editing studio.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050b18",
+  "theme_color": "#050b18",
+  "icons": [
+    {
+      "src": "./clipforge-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
