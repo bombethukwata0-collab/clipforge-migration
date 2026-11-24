@@ -12,15 +12,16 @@ This repository is the destination workspace for migrating Clipforge from AppDep
 - [ ] Complete AI analysis, smart reframe, and transcription using an approved provider.
 - [ ] Verify background processing and completion notifications.
 - [ ] Connect this repository to the existing Netlify project.
-- [ ] Build, test, and deploy.
+- [x] Frontend production build and Netlify API TypeScript check pass in GitHub Actions.
+- [ ] Connect this repository to the existing Netlify project and deploy.
 
 ## Safety and cost notes
 
 - The original AppDeploy project remains unchanged.
 - The AI endpoints currently return a clear "not enabled" response. No paid AI provider or API key has been configured.
 - The Netlify API uses the existing team-login protection and `context.user` for server-side identity. The account display is read-only because this protected team-SSO setup does not provide an in-app sign-out flow.
-- An automated GitHub Actions build workflow has been added, but no successful run has been confirmed yet.
-- The project has not yet been built, tested, or deployed from this repository.
+- GitHub Actions successfully builds the frontend and type-checks the Netlify API function. This is a compile check, not a live deployment or end-to-end test.
+- The project has not yet been deployed or tested against live Netlify services.
 
 ## Destination
 
