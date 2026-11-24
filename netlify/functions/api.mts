@@ -16,7 +16,10 @@ type Project = {
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
-    headers: {\n      "content-type": "application/json; charset=utf-8",\n      "cache-control": "no-store",\n    },
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
   });
 
 const error = (message: string, status: number) => json({ error: message }, status);
@@ -105,7 +108,7 @@ const defaultStoreFactory = getStore as unknown as StoreFactory;
 export function createHandler(storeFactory: StoreFactory = defaultStoreFactory) {
   return async (request: Request, context: NetlifyUserContext): Promise<Response> => {
     const url = new URL(request.url);
-    const path = url.pathname.replace(/\\/+$/, "") || "/";
+    const path = url.pathname.replace(new RegExp("/+$"), "") || "/";
 
     // Match the original public health endpoint; user data routes remain protected.
     if (path === "/api/health" && request.method === "GET") {
@@ -161,7 +164,7 @@ export function createHandler(storeFactory: StoreFactory = defaultStoreFactory) 
         return json({ project }, 201);
       }
 
-      const match = path.match(/^\\/api\\/projects\\/([A-Za-z0-9-]+)$/);
+      const match = path.match(new RegExp("^/api/projects/([A-Za-z0-9-]+)$"));
       if (match) {
         const id = match[1];
         const key = prefix + id;
