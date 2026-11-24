@@ -404,6 +404,12 @@ function assembleStorySuggestions(items: Clip[], preserveScriptOrder = false) {
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot' | 'recovery'>('login');
+  const [authNotice, setAuthNotice] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
+  const [recoveryPending, setRecoveryPending] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<DeferredInstallPrompt | null>(null);
   const [appInstalled, setAppInstalled] = useState(false);
   const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
@@ -569,30 +575,31 @@ function App() {
 
   useEffect(() => {
     let live = true;
-    auth
-      .getUser()
-      .then(async current => {
+    auth.handleCallback()
+      .then(async callback => {
+        if (!live) return;
+        if (callback?.type === 'recovery') {
+          setRecoveryPending(true);
+          setAuthMode('recovery');
+          setAuthNotice('Choose a new password to finish recovering your account.');
+        }
+        const current = await auth.getUser();
         if (!live) return;
         setUser(current);
         setAuthLoading(false);
-        if (current) {
+        if (current && callback?.type !== 'recovery') {
           try {
             const response = await api.get('/api/projects');
             if (live) setProjects(response.data.projects || []);
           } catch {
-            if (live)
-              setErrorMessage(
-                'Could not load your saved projects. Please refresh and try again.'
-              );
+            if (live) setErrorMessage('Could not load your saved projects. Please refresh and try again.');
           }
         }
       })
       .catch(() => {
         if (live) {
           setAuthLoading(false);
-          setErrorMessage(
-            'Could not restore your sign-in session. Try signing in again.'
-          );
+          setErrorMessage('Could not restore your sign-in session. Check that Clipforge authentication is enabled, then try again.');
         }
       });
     return () => {
@@ -852,12 +859,101 @@ function App() {
 
   const signIn = async () => {
     setErrorMessage('');
+    setAuthNotice('');
+    if (!authEmail.trim() || !authPassword) {
+      setErrorMessage('Enter your email address and password.');
+      return;
+    }
+    setAuthBusy(true);
     try {
-      await auth.signInWithRedirect();
-    } catch {
-      setErrorMessage(
-        'Sign-in could not start. Check browser storage settings and try again.'
-      );
+      const current = await auth.signIn(authEmail.trim(), authPassword);
+      setUser(current);
+      setAuthPassword('');
+      const response = await api.get('/api/projects');
+      setProjects(response.data.projects || []);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Sign-in failed. Please try again.');
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const signUp = async () => {
+    setErrorMessage('');
+    setAuthNotice('');
+    if (!authEmail.trim() || authPassword.length < 8) {
+      setErrorMessage('Enter a valid email and a password with at least 8 characters.');
+      return;
+    }
+    setAuthBusy(true);
+    try {
+      await auth.signUp(authEmail.trim(), authPassword);
+      const current = await auth.getUser();
+      if (current) {
+        setUser(current);
+        const response = await api.get('/api/projects');
+        setProjects(response.data.projects || []);
+      } else {
+        setAuthMode('login');
+        setAuthPassword('');
+        setAuthNotice('Account created. Check your email for a confirmation link, then sign in.');
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Account creation failed. Please try again.');
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const sendRecoveryEmail = async () => {
+    setErrorMessage('');
+    setAuthNotice('');
+    if (!authEmail.trim()) {
+      setErrorMessage('Enter the email address linked to your account.');
+      return;
+    }
+    setAuthBusy(true);
+    try {
+      await auth.requestPasswordRecovery(authEmail.trim());
+      setAuthNotice('If an account exists for that email, a password recovery link will be sent.');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Could not request password recovery.');
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const finishPasswordRecovery = async () => {
+    setErrorMessage('');
+    if (authPassword.length < 8) {
+      setErrorMessage('Choose a password with at least 8 characters.');
+      return;
+    }
+    setAuthBusy(true);
+    try {
+      await auth.updatePassword(authPassword);
+      setAuthPassword('');
+      setRecoveryPending(false);
+      setAuthMode('login');
+      setAuthNotice('Your password has been updated.');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Could not update your password.');
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await auth.signOut();
+      setUser(null);
+      setProjects([]);
+      setActiveProjectId(null);
+      setAuthMode('login');
+      setAuthNotice('');
+      setErrorMessage('');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Could not sign out. Please try again.');
     }
   };
 
@@ -2846,7 +2942,10 @@ function App() {
     );
   }
 
-  if (!user) {
+  if (!user || recoveryPending) {
+    const isRecovery = authMode === 'recovery' && recoveryPending;
+    const isSignup = authMode === 'signup';
+    const isForgot = authMode === 'forgot';
     return (
       <div className="auth-screen">
         <div className="auth-glow" />
@@ -2862,21 +2961,83 @@ function App() {
             <Sparkles size={14} /> YOUR CREATOR WORKSPACE
           </div>
           <h1>
-            Turn raw footage
+            {isRecovery ? 'Choose a new' : isSignup ? 'Create your' : isForgot ? 'Reset your' : 'Turn raw footage'}
             <br />
-            <span>into the good part.</span>
+            <span>{isRecovery ? 'password.' : isSignup ? 'creator account.' : isForgot ? 'password.' : 'into the good part.'}</span>
           </h1>
           <p>
-            Build clean clips, get AI-assisted moment suggestions, and keep your
-            edit plans in one place.
+            {isRecovery
+              ? 'Set a new password to get back into your creator workspace.'
+              : isSignup
+                ? 'Create an account to save your edit plans and access your workspace.'
+                : isForgot
+                  ? 'We will send a password recovery link if an account matches that email.'
+                  : 'Build clean clips, get AI-assisted moment suggestions, and keep your edit plans in one place.'}
           </p>
-          <button className="primary-button full" onClick={signIn}>
-            Sign in to your studio <ChevronRight size={17} />
-          </button>
-          <div className="privacy-note">
-            <Check size={14} /> Your video stays in your browser. Sampled frames and, when requested, compressed audio chunks are sent for AI processing.
-          </div>
+          {!isRecovery && (
+            <label className="auth-field">
+              <span>Email address</span>
+              <input
+                className="auth-input"
+                type="email"
+                autoComplete="email"
+                value={authEmail}
+                onChange={event => setAuthEmail(event.target.value)}
+                placeholder="you@example.com"
+              />
+            </label>
+          )}
+          {!isForgot && (
+            <label className="auth-field">
+              <span>{isRecovery ? 'New password' : 'Password'}</span>
+              <input
+                className="auth-input"
+                type="password"
+                autoComplete={isSignup || isRecovery ? 'new-password' : 'current-password'}
+                value={authPassword}
+                onChange={event => setAuthPassword(event.target.value)}
+                placeholder={isRecovery || isSignup ? 'At least 8 characters' : 'Your password'}
+              />
+            </label>
+          )}
+          {isRecovery ? (
+            <button className="primary-button full" onClick={finishPasswordRecovery} disabled={authBusy}>
+              Update password <ChevronRight size={17} />
+            </button>
+          ) : isForgot ? (
+            <button className="primary-button full" onClick={sendRecoveryEmail} disabled={authBusy}>
+              Send recovery link <ChevronRight size={17} />
+            </button>
+          ) : isSignup ? (
+            <button className="primary-button full" onClick={signUp} disabled={authBusy}>
+              {authBusy ? 'Creating account…' : 'Create account'} <ChevronRight size={17} />
+            </button>
+          ) : (
+            <button className="primary-button full" onClick={signIn} disabled={authBusy}>
+              {authBusy ? 'Signing in…' : 'Sign in to your studio'} <ChevronRight size={17} />
+            </button>
+          )}
+          {!isRecovery && (
+            <div className="auth-links">
+              {isForgot ? (
+                <button type="button" onClick={() => { setAuthMode('login'); setErrorMessage(''); setAuthNotice(''); }}>Back to sign in</button>
+              ) : isSignup ? (
+                <button type="button" onClick={() => { setAuthMode('login'); setErrorMessage(''); setAuthNotice(''); }}>Already have an account? Sign in</button>
+              ) : (
+                <>
+                  <button type="button" onClick={() => { setAuthMode('signup'); setErrorMessage(''); setAuthNotice(''); }}>Create an account</button>
+                  <button type="button" onClick={() => { setAuthMode('forgot'); setErrorMessage(''); setAuthNotice(''); }}>Forgot password?</button>
+                </>
+              )}
+            </div>
+          )}
+          {authNotice && <div className="auth-notice">{authNotice}</div>}
           {errorMessage && <div className="alert">{errorMessage}</div>}
+          {!isRecovery && (
+            <div className="privacy-note">
+              <Check size={14} /> Your video stays in your browser. Sampled frames and, when requested, compressed audio chunks are sent for AI processing.
+            </div>
+          )}
         </div>
         <div className="auth-footer">BUILT FOR THE MOMENTS WORTH KEEPING</div>
       </div>
@@ -2924,15 +3085,15 @@ function App() {
               edit plans, not video files.
             </p>
           </div>
-          <div className="account-button" aria-label="Signed-in Netlify team account">
+          <button className="account-button" type="button" onClick={signOut} aria-label="Sign out of Clipforge" title="Sign out">
             <div className="avatar">
               {(user.name || user.email || 'C').slice(0, 1).toUpperCase()}
             </div>
             <span>
               <strong>{user.name || 'Creator account'}</strong>
-              <small>{user.email || 'Signed in with Netlify'}</small>
+              <small>Sign out</small>
             </span>
-          </div>
+          </button>
         </div>
       </aside>
 
