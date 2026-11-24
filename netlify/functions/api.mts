@@ -142,10 +142,13 @@ export default async (request: Request, context: NetlifyUserContext) => {
     if (request.method === "PUT") {
       let body: unknown;
       try { body = await request.json(); } catch { return error("Invalid JSON request.", 400); }
-      if (!isProjectBody({ ...current, ...(body as object) })) {
-        return error("Project title and valid clip data are required.", 400);
+      if (!body || typeof body !== "object" || Array.isArray(body)) {
+        return error("A valid project object is required.", 400);
       }
       const patch = body as Partial<Project>;
+      if (!isProjectBody({ ...current, ...patch })) {
+        return error("Project title and valid clip data are required.", 400);
+      }
       const updated: Project = {
         ...current,
         title: typeof patch.title === "string" ? patch.title.trim().slice(0, 180) : current.title,
