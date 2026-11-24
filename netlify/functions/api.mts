@@ -1,4 +1,5 @@
 import { getStore } from "@netlify/blobs";
+import { getUser } from "@netlify/identity";
 import type { Context } from "@netlify/functions";
 
 type Project = {
@@ -123,9 +124,19 @@ function isProjectBody(value: unknown): value is {
   return true;
 }
 
-type NetlifyUserContext = Context & {
-  user?: { id: string; email?: string; expiresAt?: Date };
+type IdentityUser = {
+  id: string;
+  email?: string;
+  name?: string;
+  userMetadata?: { full_name?: string };
 };
+
+type UserResolver = (
+  request: Request,
+  context: Context
+) => Promise<IdentityUser | null>;
+
+const resolveIdentityUser: UserResolver = async () => await getUser();
 
 type ProjectStore = {
   list(options: { prefix: string }): Promise<{ blobs: Array<{ key: string }> }>;
@@ -141,8 +152,11 @@ type StoreFactory = (options: {
 
 const defaultStoreFactory = getStore as unknown as StoreFactory;
 
-export function createHandler(storeFactory: StoreFactory = defaultStoreFactory) {
-  return async (request: Request, context: NetlifyUserContext): Promise<Response> => {
+export function createHandler(
+  storeFactory: StoreFactory = defaultStoreFactory,
+  userResolver: UserResolver = resolveIdentityUser
+) {
+  return async (request: Request, context: Context): Promise<Response> => {
     const url = new URL(request.url);
     const path = url.pathname.replace(new RegExp("/+$"), "") || "/";
 
@@ -151,15 +165,19 @@ export function createHandler(storeFactory: StoreFactory = defaultStoreFactory) 
       return json({ ok: true, service: "clipforge-api", version: "migration-preview" });
     }
 
-    const user = context.user;
-    if (!user?.id) return error("Sign in through the protected Netlify site to continue.", 401);
+    const user = await userResolver(request, context);
+    if (!user?.id) return error("Please sign in to continue.", 401);
 
     try {
       const store = storeFactory({ name: "clipforge-projects", consistency: "strong" });
       const prefix = `users/${encodeURIComponent(user.id)}/projects/`;
 
       if (path === "/api/me" && request.method === "GET") {
-        return json({ user: { userId: user.id, email: user.email ?? undefined } });
+        return json({ user: {
+          userId: user.id,
+          email: user.email ?? undefined,
+          name: user.name ?? user.userMetadata?.full_name ?? undefined,
+        } });
       }
 
       if (path === "/api/projects" && request.method === "GET") {
