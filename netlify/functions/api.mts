@@ -35,7 +35,7 @@ function validProjectSettings(value: unknown): boolean {
     typeof s.exportVolume === "number" && Number.isFinite(s.exportVolume) && s.exportVolume >= 0 && s.exportVolume <= 150 &&
     typeof s.audioCleanup === "number" && Number.isFinite(s.audioCleanup) && s.audioCleanup >= 0 && s.audioCleanup <= 100 &&
     ["ai", "fixed"].includes(String(s.clipLengthMode)) &&
-    typeof s.customClipLength === "string" && /^\\d{1,2}$/.test(s.customClipLength) &&
+    typeof s.customClipLength === "string" && /^\d{1,2}$/.test(s.customClipLength) &&
     Number(s.customClipLength) >= 1 && Number(s.customClipLength) <= 60 &&
     typeof s.reframeEnabled === "boolean" &&
     typeof s.reframeX === "number" && Number.isFinite(s.reframeX) && s.reframeX >= 0 && s.reframeX <= 1 &&
