@@ -99,7 +99,7 @@ test("project CRUD persists and retrieves records for the signed-in user", async
 
 test("project listing returns the 50 most recently updated projects", async () => {
   const store = createMemoryStore();
-  const handler = createHandler(() => store);
+  const handler = createHandler(() => store, testUserResolver);
   for (let index = 0; index < 60; index += 1) {
     const id = "project-" + String(index).padStart(3, "0");
     store.records.set("users/user-a/projects/" + id, {
@@ -122,7 +122,7 @@ test("project listing returns the 50 most recently updated projects", async () =
 });
 
 test("oversized project payloads are rejected before JSON parsing", async () => {
-  const handler = createHandler(() => createMemoryStore());
+  const handler = createHandler(() => createMemoryStore(), testUserResolver);
   const response = await handler(new Request("https://clipforge.test/api/projects", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -133,7 +133,7 @@ test("oversized project payloads are rejected before JSON parsing", async () => 
 
 test("a different user cannot list, update, or delete another user's project", async () => {
   const store = createMemoryStore();
-  const handler = createHandler(() => store);
+  const handler = createHandler(() => store, testUserResolver);
   const owner = { user: { id: "owner" } };
   const other = { user: { id: "other" } };
 
@@ -155,7 +155,7 @@ test("a different user cannot list, update, or delete another user's project", a
 
 test("invalid update bodies are rejected without changing the saved project", async () => {
   const store = createMemoryStore();
-  const handler = createHandler(() => store);
+  const handler = createHandler(() => store, testUserResolver);
   const context = { user: { id: "user-a" } };
   const createdResponse = await handler(makeRequest("/api/projects", "POST", validProject), context);
   const created = (await createdResponse.json()).project;
@@ -175,7 +175,7 @@ test("invalid update bodies are rejected without changing the saved project", as
 });
 
 test("protected project routes reject requests without a Netlify user", async () => {
-  const handler = createHandler(() => createMemoryStore());
+  const handler = createHandler(() => createMemoryStore(), testUserResolver);
   const response = await handler(makeRequest("/api/projects"), {});
   assert.equal(response.status, 401);
 });
