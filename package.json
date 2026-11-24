@@ -15,7 +15,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "@netlify/blobs": "^10.0.0",
-    "@netlify/functions": "^4.2.0"
+    "@netlify/functions": "^4.2.0",
+    "@netlify/identity": "^2.0.1"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.0.0"
