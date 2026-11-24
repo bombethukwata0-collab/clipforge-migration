@@ -21,6 +21,29 @@ const json = (data: unknown, status = 200) =>
 
 const error = (message: string, status: number) => json({ error: message }, status);
 
+function validProjectSettings(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const s = value as Record<string, unknown>;
+  return typeof s.editInstructions === "string" && s.editInstructions.length <= 1500 &&
+    typeof s.editScript === "string" && s.editScript.length <= 4000 &&
+    ["manual", "automatic", "hybrid"].includes(String(s.editingMode)) &&
+    ["none", "fade", "pop"].includes(String(s.captionAnimation)) &&
+    ["compact", "standard", "high"].includes(String(s.exportQuality)) &&
+    ["original", "9:16", "1:1", "16:9"].includes(String(s.exportAspect)) &&
+    ["720", "1080"].includes(String(s.exportResolution)) &&
+    ["0.5", "0.8", "1.2", "1.5", "2"].includes(String(s.crossfadeDuration)) &&
+    typeof s.exportVolume === "number" && Number.isFinite(s.exportVolume) && s.exportVolume >= 0 && s.exportVolume <= 150 &&
+    typeof s.audioCleanup === "number" && Number.isFinite(s.audioCleanup) && s.audioCleanup >= 0 && s.audioCleanup <= 100 &&
+    ["ai", "fixed"].includes(String(s.clipLengthMode)) &&
+    typeof s.customClipLength === "string" && /^\\d{1,2}$/.test(s.customClipLength) &&
+    Number(s.customClipLength) >= 1 && Number(s.customClipLength) <= 45 &&
+    typeof s.reframeEnabled === "boolean" &&
+    typeof s.reframeX === "number" && Number.isFinite(s.reframeX) && s.reframeX >= 0 && s.reframeX <= 1 &&
+    typeof s.reframeY === "number" && Number.isFinite(s.reframeY) && s.reframeY >= 0 && s.reframeY <= 1 &&
+    (s.exportFormat === undefined || ["auto", "mp4", "webm"].includes(String(s.exportFormat))) &&
+    (s.sourceAudioEnabled === undefined || typeof s.sourceAudioEnabled === "boolean");
+}
+
 function isProjectBody(value: unknown): value is {
   title: string; clips: Array<{ startSeconds: number; endSeconds: number }>;
   captions?: Array<{ id: string; startSeconds: number; endSeconds: number; text: string }>;
@@ -51,12 +74,13 @@ function isProjectBody(value: unknown): value is {
     })) return false;
   }
   if (body.captionStyle !== undefined) {
-    if (!body.captionStyle || typeof body.captionStyle !== "object") return false;
+    if (!body.captionStyle || typeof body.captionStyle !== "object" || Array.isArray(body.captionStyle)) return false;
     const style = body.captionStyle as Record<string, unknown>;
     if (!["26", "34", "42"].includes(String(style.fontSize)) ||
       typeof style.color !== "string" || !/^#[0-9a-fA-F]{6}$/.test(style.color) ||
       !["dark", "none"].includes(String(style.background))) return false;
   }
+  if (body.settings !== undefined && !validProjectSettings(body.settings)) return false;
   return true;
 }
 
