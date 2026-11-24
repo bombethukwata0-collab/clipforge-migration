@@ -84,7 +84,11 @@ function isProjectBody(value: unknown): value is {
   return true;
 }
 
-export default async (request: Request, context: Context) => {
+type NetlifyUserContext = Context & {
+  user?: { id: string; email?: string; expiresAt?: Date };
+};
+
+export default async (request: Request, context: NetlifyUserContext) => {
   const user = context.user;
   if (!user?.id) return error("Sign in through the protected Netlify site to continue.", 401);
 
