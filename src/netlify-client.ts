@@ -1,3 +1,29 @@
+import {
+  getUser,
+  handleAuthCallback,
+  login,
+  logout,
+  signup,
+} from "@netlify/identity";
+
+type IdentityUser = {
+  id: string;
+  email?: string;
+  name?: string;
+  userMetadata?: { full_name?: string };
+};
+
+type AppUser = { userId: string; email?: string; name?: string };
+
+function normalizeUser(user: IdentityUser | null): AppUser | null {
+  if (!user) return null;
+  return {
+    userId: user.id,
+    email: user.email,
+    name: user.name ?? user.userMetadata?.full_name,
+  };
+}
+
 type ApiResponse<T> = { data: T };
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<ApiResponse<T>> {
@@ -30,17 +56,18 @@ export const api = {
 
 export const auth = {
   async getUser() {
-    try {
-      const response = await api.get<{ user: { userId: string; email?: string; name?: string } }>("/api/me");
-      return response.data.user ?? null;
-    } catch (error) {
-      if (error instanceof Error && /sign in|unauthorized/i.test(error.message)) return null;
-      throw error;
-    }
+    return normalizeUser(await getUser() as IdentityUser | null);
   },
-  async signInWithRedirect() {
-    // Netlify team SSO protects the site itself; reloading sends an expired
-    // or unauthenticated browser session back through Netlify's access gate.
-    window.location.reload();
+  async handleCallback() {
+    return await handleAuthCallback();
+  },
+  async signIn(email: string, password: string) {
+    return normalizeUser(await login(email, password) as IdentityUser);
+  },
+  async signUp(email: string, password: string) {
+    return normalizeUser(await signup(email, password) as IdentityUser);
+  },
+  async signOut() {
+    await logout();
   },
 };
