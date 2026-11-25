@@ -1,6 +1,6 @@
 import { getStore } from "@netlify/blobs";
 import { getUser } from "@netlify/identity";
-import type { Context } from "@netlify/functions";
+import type { Config, Context } from "@netlify/functions";
 
 type Project = {
   id: string;
@@ -282,6 +282,8 @@ export function createHandler(
     }
   };
 }
+
+export const config: Config = { path: "/api/*" };
 
 export default createHandler();
 
